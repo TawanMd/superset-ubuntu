@@ -2,6 +2,17 @@
 
 Este é um fork do repositório oficial `apache/superset`.
 
+
+## status atual do projeto de autenticação:
+
+## Estado Atual e Observações (Abril 2025)
+
+*   A autenticação customizada para o usuário `teste` com senha `teste` (hash scrypt) está implementada e funcional (modificações em `superset/security/manager.py`). O usuário precisa existir no banco de dados Superset.
+*   **Problema Conhecido:** Apesar da lógica estar presente, a API de login (`/api/v1/security/login`) **não está retornando** os campos customizados `tenantUuid` e `sistema` no corpo da resposta JSON, retornando apenas os tokens padrão. Testes indicam que o objeto `user` *é modificado* em memória, mas a resposta final não reflete isso.
+*   **Aviso:** Foram observados problemas com o recarregamento automático do servidor Flask (`--reload`) neste ambiente WSL, sendo necessário reiniciar o servidor manualmente (`Ctrl+C` e `superset run...`) e limpar caches de bytecode (`find . -name '*.pyc' -delete` etc.) para garantir que as alterações no código Python sejam aplicadas.
+
+## Parte de configuração do ambiente para rodar!!!!!!!!!
+
 ## Configuração do Ambiente de Desenvolvimento (Ubuntu 24.04 LTS / WSL 2)
 
 Estas instruções detalham como configurar um ambiente de desenvolvimento local para rodar o Superset diretamente a partir deste código fonte, permitindo modificações e testes. Ambiente testado: Ubuntu 24.04 LTS rodando no WSL 2.
