@@ -1,3 +1,161 @@
+# Apache Superset - Fork de TawanMd
+
+Este é um fork do repositório oficial `apache/superset`.
+
+## Configuração do Ambiente de Desenvolvimento (Ubuntu 24.04 LTS / WSL 2)
+
+Estas instruções detalham como configurar um ambiente de desenvolvimento local para rodar o Superset diretamente a partir deste código fonte, permitindo modificações e testes. Ambiente testado: Ubuntu 24.04 LTS rodando no WSL 2.
+
+### Pré-requisitos
+
+*   Windows 10/11 com WSL 2 configurado.
+*   Ubuntu 24.04 LTS instalado no WSL 2.
+*   Git (`sudo apt install git`).
+*   `curl` (`sudo apt install curl`).
+*   `openssl` (geralmente padrão no Ubuntu).
+*   Conexão com a internet.
+*   (Opcional, mas recomendado): Diretório `~/superset-install` para guardar o venv e config (ou ajuste os paths abaixo).
+
+### Passos Detalhados
+
+1.  **Clonar este Repositório (Fork):**
+    ```bash
+    cd ~ # Ir para o diretório home
+    git clone https://github.com/TawanMd/superset-ubuntu.git superset-source-code
+    cd superset-source-code
+    ```
+
+2.  **Instalar Dependências do Sistema Operacional:**
+    ```bash
+    sudo apt update && sudo apt upgrade -y
+    # Ferramentas de compilação, Python 3.10, libs para DBs, libs LDAP/SASL, zstd, e para add-apt-repo
+    sudo apt install -y build-essential pkg-config libssl-dev libffi-dev \
+                      python3.10 python3.10-dev python3.10-venv \
+                      default-libmysqlclient-dev libpq-dev \
+                      libldap2-dev libsasl2-dev \
+                      zstd \
+                      software-properties-common curl
+    # (Opcional, necessário se python3.10 não estiver nos repos padrão) Adicionar PPA e instalar
+    # sudo add-apt-repository ppa:deadsnakes/ppa
+    # sudo apt update
+    # sudo apt install -y python3.10 python3.10-dev python3.10-venv
+    ```
+
+3.  **Configurar Node.js via `nvm` (Node Version Manager):**
+    *   Instalar `nvm`:
+        ```bash
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        ```
+    *   **FECHE E REABRA O TERMINAL.**
+    *   Verificar instalação `nvm`: `command -v nvm` (deve retornar `nvm`)
+    *   Navegar para a raiz do projeto e instalar a versão do Node definida no `.nvmrc`:
+        ```bash
+        cd ~/superset-source-code # Garantir que está na raiz
+        # Se o .nvmrc não estiver na raiz, mova-o (verificar localização no repo):
+        # git mv path/to/.nvmrc . && git commit -m "Mover .nvmrc" && git push
+        nvm install # Lê .nvmrc e instala a versão Node/npm correta
+        nvm use     # Ativa a versão instalada
+        node --version && npm --version # Verificar
+        ```
+
+4.  **Criar e Ativar Ambiente Virtual Python:**
+    *   Usaremos um diretório separado para o venv para mantê-lo fora do repo git do código fonte.
+        ```bash
+        mkdir -p ~/superset-install
+        cd ~/superset-install # Ir para a pasta de instalação/config
+        python3.10 -m venv venv
+        source venv/bin/activate # Ativar o venv
+        ```
+
+5.  **Instalar Dependências Python (Desenvolvimento):**
+    *   Voltar para o diretório do código fonte e instalar requirements:
+        ```bash
+        cd ~/superset-source-code # Voltar para o código fonte
+        pip install --upgrade pip setuptools wheel # Atualizar pip no venv
+        pip install -r requirements/base.txt
+        # Usamos 'development.txt', ajuste se o nome for outro
+        pip install -r requirements/development.txt
+        ```
+
+6.  **Instalar Superset em Modo Editável:**
+    *   Com o venv ativo e no diretório `~/superset-source-code`:
+        ```bash
+        pip install -e .
+        ```
+
+7.  **Construir Ativos do Frontend:**
+    *   Verificar `npm` (já deve estar ok via `nvm`).
+    *   Navegar para a pasta frontend, instalar dependências e construir:
+        ```bash
+        cd superset-frontend
+        # Limpar antes é uma boa ideia, especialmente após erros
+        # rm -rf node_modules
+        npm install # Usar npm install após limpeza ou se 'ci' falhar (PODE DEMORAR)
+        npm run build # Construir ativos (PODE DEMORAR)
+        cd .. # Voltar para ~/superset-source-code
+        ```
+
+8.  **Configurar `superset_config.py` (com `SECRET_KEY`):**
+    *   Gere uma chave segura:
+        ```bash
+        openssl rand -base64 42
+        ```
+    *   Copie a chave gerada.
+    *   Crie/Edite o arquivo de configuração (vamos colocá-lo em `superset-install`):
+        ```bash
+        nano ~/superset-install/superset_config.py
+        ```
+    *   Adicione o seguinte conteúdo, substituindo o placeholder pela sua chave:
+        ```python
+        # superset_config.py
+        SECRET_KEY = 'SUA_CHAVE_SECRETA_ALEATORIA_AQUI'
+        # Adicione outras configurações personalizadas aqui, se necessário
+        ```
+    *   Salve e feche (`Ctrl+X`, `Y`, `Enter`).
+
+9.  **Definir Variáveis de Ambiente:**
+    *   (Com venv ativo)
+        ```bash
+        export FLASK_APP=superset
+        export SUPERSET_CONFIG_PATH=~/superset-install/superset_config.py
+        ```
+
+10. **Inicializar Banco de Dados e Roles:**
+    ```bash
+    superset db upgrade
+    # Crie o admin se ainda não o fez neste DB (omitido se já existe do setup anterior)
+    # superset fab create-admin
+    superset init
+    ```
+
+### Rodando o Servidor de Desenvolvimento
+
+1.  Navegue para o diretório do código fonte: `cd ~/superset-source-code`
+2.  Ative o ambiente virtual: `source ~/superset-install/venv/bin/activate`
+3.  Exporte as variáveis de ambiente:
+    ```bash
+    export FLASK_APP=superset
+    export SUPERSET_CONFIG_PATH=~/superset-install/superset_config.py
+    ```
+4.  Inicie o servidor:
+    ```bash
+    superset run -p 8088 --with-threads --reload --debugger
+    ```
+5.  Acesse `http://localhost:8088` no navegador do Windows.
+
+### Modificando o Código
+
+*   **Backend:** Edite os arquivos Python dentro de `~/superset-source-code/superset/`. As alterações terão efeito após reiniciar o servidor (`Ctrl+C` e `superset run...`).
+*   **Frontend:** Edite os arquivos em `~/superset-source-code/superset-frontend/`. Após salvar, você precisará reconstruir os ativos:
+    ```bash
+    cd ~/superset-source-code/superset-frontend
+    npm run build
+    cd ..
+    # Reinicie o servidor Superset
+    ```
+    *(Alternativamente, rode `npm run dev` em um terminal separado para rebuild automático do frontend).*
+*   **Versionamento:** Use `git add`, `git commit`, `git push` dentro de `~/superset-source-code` para enviar suas modificações para o seu fork `TawanMd/superset-ubuntu`.
+
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
 or more contributor license agreements.  See the NOTICE file
